@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solveur d'Échecs - Placement Optimal</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 1000px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .solver-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+        .solver-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .solver-title h3 {
+            margin: 0;
+            color: #495057;
+        }
+        .complexity-badge {
+            background: #ff6b6b;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .config-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .piece-config {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .piece-config select, .piece-config input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .piece-config select {
+            flex: 2;
+        }
+        .piece-config input {
+            flex: 1;
+            text-align: center;
+        }
+        .piece-btn {
+            padding: 10px 15px;
+            font-size: 24px;
+            border: 2px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .piece-btn:hover {
+            transform: scale(1.1);
+            border-color: #667eea;
+        }
+        .piece-btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            border: 3px solid #333;
+            margin: 20px auto;
+        }
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .square.light {
+            background-color: #f0d9b5;
+        }
+        .square.dark {
+            background-color: #b58863;
+        }
+        .square.controlled {
+            background-color: rgba(255, 0, 0, 0.3) !important;
+        }
+        .square.placed-piece {
+            animation: placed-animation 1s ease-out;
+        }
+        @keyframes placed-animation {
+            0% { transform: scale(0); }
+            70% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .square:hover {
+            opacity: 0.8;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .action-btn {
+            padding: 12px 24px;
+            font-size: 14px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .solve-btn {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+        .solve-btn:hover {
+            background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+        .clear-btn {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+        .clear-btn:hover {
+            background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(244, 67, 54, 0.4);
+        }
+        .manual-btn {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+        }
+        .manual-btn:hover {
+            background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+        }
+        .info {
+            text-align: center;
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+        .status {
+            text-align: center;
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .status.success {
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            color: #2e7d32;
+        }
+        .status.error {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            color: #c62828;
+        }
+        .status.info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            color: #1565c0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+        .solutions-display {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            background: white;
+        }
+        .solution-item {
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            background: #f5f5f5;
+            cursor: pointer;
+        }
+        .solution-item:hover {
+            background: #e0e0e0;
+        }
+        .time-display {
+            font-size: 12px;
+            color: #666;
+            text-align: right;
+            margin-top: 5px;
+        }
+        .preset-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        .preset-btn {
+            padding: 8px 15px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .preset-btn:hover {
+            background: #5a6268;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>♛ Solveur d'Échecs - Placement Optimal ♛</h1>
+        
+        <div class="solver-section">
+            <div class="solver-title">
+                <h3>Configuration du problème</h3>
+                <span class="complexity-badge" id="complexityBadge">Complexité: Faible</span>
+            </div>
+            
+            <div class="preset-buttons">
+                <button class="preset-btn" onclick="loadPreset('8queens')">8 Reines</button>
+                <button class="preset-btn" onclick="loadPreset('32knights')">32 Cavaliers</button>
+                <button class="preset-btn" onclick="loadPreset('14bishops')">14 Fous</button>
+                <button class="preset-btn" onclick="loadPreset('8rooks')">8 Tours</button>
+                <button class="preset-btn" onclick="loadPreset('5kings')">5 Rois</button>
+                <button class="preset-btn" onclick="loadPreset('mixed')">Mixte avancé</button>
+            </div>
+            
+            <div class="config-inputs" id="pieceConfigs">
+                <div class="piece-config">
+                    <select onchange="updateComplexity()">
+                        <option value="queen">Reine (Dame)</option>
+                        <option value="rook">Tour</option>
+                        <option value="bishop">Fou</option>
+                        <option value="knight">Cavalier</option>
+                        <option value="king">Roi</option>
+                        <option value="pawn">Pion</option>
+                    </select>
+                    <input type="number" min="0" max="32" value="8" onchange="updateComplexity()">
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="action-btn" onclick="addPieceConfig()">+ Ajouter une autre pièce</button>
+                <button class="action-btn" onclick="clearPieceConfigs()">× Réinitialiser</button>
+            </div>
+        </div>
+        
+        <div class="status info" id="status">
+            Prêt à résoudre. Configurez votre problème ci-dessus.
+        </div>
+        
+        <div class="progress-bar" id="progressBar" style="display: none;">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-value" id="statPieces">0</div>
+                <div class="stat-label">Pièces totales</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="statPlaced">0</div>
+                <div class="stat-label">Pièces placées</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="statTime">0s</div>
+                <div class="stat-label">Temps</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="statNodes">0</div>
+                <div class="stat-label">Noeuds explorés</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="action-btn solve-btn" onclick="solveChessProblem()">⚡ Résoudre le problème</button>
+            <button class="action-btn clear-btn" onclick="clearBoard()">Effacer l'échiquier</button>
+            <button class="action-btn manual-btn" onclick="toggleManualMode()">Mode manuel</button>
+        </div>
+        
+        <div class="board" id="board"></div>
+        
+        <div class="info">
+            <p><strong>Algorithme :</strong> Backtracking intelligent avec heuristiques (MRV, LCV, forward checking)</p>
+            <p><strong>Cliquez</strong> sur une case pour placer/retirer une pièce (mode manuel)</p>
+            <p><strong>Les solutions trouvées s'afficheront ci-dessous</strong></p>
+        </div>
+        
+        <div id="solutionsContainer" style="display: none;">
+            <h3>Solutions trouvées:</h3>
+            <div class="solutions-display" id="solutionsDisplay"></div>
+        </div>
+    </div>
+
+    <script>
+        let board = [];
+        let isSolving = false;
+        let solutions = [];
+        let currentPieceIndex = 0;
+        let nodesExplored = 0;
+        let startTime = 0;
+        let manualMode = false;
+        let pieceConfigurations = [];
+        let selectedPieceType = 'queen';
+
+        // Symboles des pièces
+        const pieceSymbols = {
+            'king': '♔',
+            'queen': '♕',
+            'rook': '♖',
+            'bishop': '♗',
+            'knight': '♘',
+            'pawn': '♙'
+        };
+
+        // Complexité de chaque pièce (plus le nombre est élevé, plus c'est restrictif)
+        const pieceComplexity = {
+            'queen': 10,   // Très restrictif
+            'rook': 8,     // Restrictif
+            'bishop': 6,   // Moyennement restrictif
+            'knight': 4,   // Peu restrictif
+            'king': 7,     // Restrictif (mais zone limitée)
+            'pawn': 3      // Peu restrictif
+        };
+
+        // Initialisation
+        function init() {
+            initBoard();
+            loadPreset('8queens');
+            updateStats();
+        }
+
+        function initBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            
+            // Initialiser le tableau board
+            board = Array(8).fill().map(() => Array(8).fill(null));
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(row + col) % 2 === 0 ? 'light' : 'dark'}`;
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    
+                    square.addEventListener('click', () => handleSquareClick(row, col));
+                    
+                    boardEl.appendChild(square);
+                }
+            }
+            
+            updateBoardDisplay();
+        }
+
+        function handleSquareClick(row, col) {
+            if (isSolving) return;
+            
+            if (manualMode) {
+                // Mode manuel : placer/supprimer la pièce sélectionnée
+                if (board[row][col]) {
+                    board[row][col] = null;
+                } else {
+                    board[row][col] = {
+                        type: selectedPieceType,
+                        symbol: pieceSymbols[selectedPieceType]
+                    };
+                }
+                updateBoardDisplay();
+                updateStats();
+            }
+        }
+
+        function loadPreset(presetName) {
+            clearPieceConfigs();
+            
+            switch(presetName) {
+                case '8queens':
+                    addPieceConfigElement('queen', 8);
+                    break;
+                case '32knights':
+                    addPieceConfigElement('knight', 32);
+                    break;
+                case '14bishops':
+                    addPieceConfigElement('bishop', 14);
+                    break;
+                case '8rooks':
+                    addPieceConfigElement('rook', 8);
+                    break;
+                case '5kings':
+                    addPieceConfigElement('king', 5);
+                    break;
+                case 'mixed':
+                    addPieceConfigElement('queen', 2);
+                    addPieceConfigElement('rook', 2);
+                    addPieceConfigElement('bishop', 2);
+                    addPieceConfigElement('knight', 2);
+                    break;
+            }
+            
+            updateComplexity();
+        }
+
+        function addPieceConfig() {
+            addPieceConfigElement('queen', 1);
+        }
+
+        function addPieceConfigElement(type, count) {
+            const container = document.getElementById('pieceConfigs');
+            const div = document.createElement('div');
+            div.className = 'piece-config';
+            div.innerHTML = `
+                <select onchange="updateComplexity()">
+                    <option value="queen" ${type === 'queen' ? 'selected' : ''}>Reine (Dame)</option>
+                    <option value="rook" ${type === 'rook' ? 'selected' : ''}>Tour</option>
+                    <option value="bishop" ${type === 'bishop' ? 'selected' : ''}>Fou</option>
+                    <option value="knight" ${type === 'knight' ? 'selected' : ''}>Cavalier</option>
+                    <option value="king" ${type === 'king' ? 'selected' : ''}>Roi</option>
+                    <option value="pawn" ${type === 'pawn' ? 'selected' : ''}>Pion</option>
+                </select>
+                <input type="number" min="0" max="32" value="${count}" onchange="updateComplexity()">
+                <button onclick="this.parentElement.remove(); updateComplexity()" style="background: none; border: none; cursor: pointer; font-size: 20px; color: #f44336;">×</button>
+            `;
+            container.appendChild(div);
+            updateComplexity();
+        }
+
+        function clearPieceConfigs() {
+            document.getElementById('pieceConfigs').innerHTML = '';
+            updateComplexity();
+        }
+
+        function updateComplexity() {
+            const configs = getPieceConfigurations();
+            let totalComplexity = 0;
+            let totalPieces = 0;
+            
+            configs.forEach(config => {
+                totalComplexity += pieceComplexity[config.type] * config.count;
+                totalPieces += config.count;
+            });
+            
+            document.getElementById('statPieces').textContent = totalPieces;
+            
+            // Mettre à jour le badge de complexité
+            const badge = document.getElementById('complexityBadge');
+            if (totalComplexity > 200) {
+                badge.textContent = 'Complexité: Extrême';
+                badge.style.background = '#d32f2f';
+            } else if (totalComplexity > 100) {
+                badge.textContent = 'Complexité: Élevée';
+                badge.style.background = '#f57c00';
+            } else if (totalComplexity > 50) {
+                badge.textContent = 'Complexité: Moyenne';
+                badge.style.background = '#ffb300';
+            } else {
+                badge.textContent = 'Complexité: Faible';
+                badge.style.background = '#4CAF50';
+            }
+            
+            updateStats();
+        }
+
+        function getPieceConfigurations() {
+            const configs = [];
+            const configElements = document.querySelectorAll('.piece-config');
+            
+            configElements.forEach(element => {
+                const select = element.querySelector('select');
+                const input = element.querySelector('input');
+                const type = select.value;
+                const count = parseInt(input.value) || 0;
+                
+                if (count > 0) {
+                    configs.push({ type, count });
+                }
+            });
+            
+            return configs;
+        }
+
+        function solveChessProblem() {
+            if (isSolving) return;
+            
+            const configs = getPieceConfigurations();
+            if (configs.length === 0) {
+                showStatus('Veuillez configurer au moins un type de pièce.', 'error');
+                return;
+            }
+            
+            // Préparer le problème
+            clearBoard();
+            isSolving = true;
+            solutions = [];
+            nodesExplored = 0;
+            startTime = Date.now();
+            
+            // Afficher la barre de progression
+            document.getElementById('progressBar').style.display = 'block';
+            document.getElementById('progressFill').style.width = '0%';
+            
+            showStatus('Résolution en cours... Cela peut prendre quelques secondes pour les problèmes complexes.', 'info');
+            
+            // Lancer la résolution dans un timeout pour permettre à l'UI de se mettre à jour
+            setTimeout(() => {
+                // Convertir la configuration en liste de pièces
+                let pieces = [];
+                configs.forEach(config => {
+                    for (let i = 0; i < config.count; i++) {
+                        pieces.push({
+                            type: config.type,
+                            symbol: pieceSymbols[config.type],
+                            id: `${config.type}_${i}`
+                        });
+                    }
+                });
+                
+                // Trier les pièces par complexité (les plus restrictives d'abord)
+                pieces.sort((a, b) => pieceComplexity[b.type] - pieceComplexity[a.type]);
+                
+                // Utiliser l'algorithme de backtracking avec heuristiques
+                solveWithBacktracking(pieces);
+                
+                // Terminer
+                isSolving = false;
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                document.getElementById('statTime').textContent = elapsedTime.toFixed(2) + 's';
+                document.getElementById('progressFill').style.width = '100%';
+                
+                if (solutions.length > 0) {
+                    // Afficher la première solution
+                    displaySolution(solutions[0]);
+                    showStatus(`Solution trouvée ! ${solutions.length} solution(s) possibles.`, 'success');
+                    
+                    // Afficher les solutions
+                    displaySolutionsList();
+                } else {
+                    showStatus('Aucune solution trouvée. Essayez avec moins de pièces ou une configuration différente.', 'error');
+                }
+                
+                updateStats();
+            }, 100);
+        }
+
+        function solveWithBacktracking(pieces, index = 0, placedPieces = []) {
+            if (index >= pieces.length) {
+                // Toutes les pièces sont placées, c'est une solution
+                solutions.push([...placedPieces]);
+                return true; // Continue pour trouver plus de solutions
+            }
+            
+            nodesExplored++;
+            if (nodesExplored % 1000 === 0) {
+                // Mettre à jour les statistiques périodiquement
+                updateStats();
+            }
+            
+            const piece = pieces[index];
+            
+            // Obtenir toutes les positions valides pour cette pièce (MRV - Minimum Remaining Values)
+            const validPositions = getAllValidPositions(piece, placedPieces);
+            
+            if (validPositions.length === 0) {
+                return false; // Aucune position valide
+            }
+            
+            // Trier par heuristique LCV (Least Constraining Value)
+            validPositions.sort((a, b) => {
+                return evaluateMoveLCV(a, piece, placedPieces) - evaluateMoveLCV(b, piece, placedPieces);
+            });
+            
+            // Essayer chaque position
+            for (const position of validPositions) {
+                // Vérifier la contrainte forward checking
+                if (forwardChecking(pieces.slice(index + 1), [...placedPieces, { piece, position }])) {
+                    placedPieces.push({ piece, position });
+                    
+                    // Mettre à jour la progression
+                    const progress = ((index + 1) / pieces.length) * 100;
+                    document.getElementById('progressFill').style.width = progress + '%';
+                    
+                    // Récursion
+                    solveWithBacktracking(pieces, index + 1, placedPieces);
+                    
+                    // Si on veut toutes les solutions, on continue même si on en trouve une
+                    placedPieces.pop();
+                }
+            }
+            
+            return false;
+        }
+
+        function getAllValidPositions(piece, placedPieces) {
+            const validPositions = [];
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (isValidPosition(row, col, piece, placedPieces)) {
+                        validPositions.push([row, col]);
+                    }
+                }
+            }
+            
+            return validPositions;
+        }
+
+        function isValidPosition(row, col, piece, placedPieces) {
+            // Vérifier si la position est déjà occupée
+            for (const placed of placedPieces) {
+                if (placed.position[0] === row && placed.position[1] === col) {
+                    return false;
+                }
+            }
+            
+            // Vérifier les attaques avec les pièces déjà placées
+            for (const placed of placedPieces) {
+                if (piecesAttackEachOther(row, col, piece.type, placed.position[0], placed.position[1], placed.piece.type)) {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+
+        function piecesAttackEachOther(r1, c1, type1, r2, c2, type2) {
+            // Même position
+            if (r1 === r2 && c1 === c2) return true;
+            
+            // Calculer les attaques en fonction du type
+            switch(type1) {
+                case 'queen':
+                    return attacksAsQueen(r1, c1, r2, c2);
+                case 'rook':
+                    return attacksAsRook(r1, c1, r2, c2);
+                case 'bishop':
+                    return attacksAsBishop(r1, c1, r2, c2);
+                case 'knight':
+                    return attacksAsKnight(r1, c1, r2, c2);
+                case 'king':
+                    return attacksAsKing(r1, c1, r2, c2);
+                case 'pawn':
+                    return attacksAsPawn(r1, c1, r2, c2);
+            }
+            return false;
+        }
+
+        function attacksAsQueen(row, col, targetRow, targetCol) {
+            return attacksAsRook(row, col, targetRow, targetCol) || 
+                   attacksAsBishop(row, col, targetRow, targetCol);
+        }
+
+        function attacksAsRook(row, col, targetRow, targetCol) {
+            return row === targetRow || col === targetCol;
+        }
+
+        function attacksAsBishop(row, col, targetRow, targetCol) {
+            return Math.abs(row - targetRow) === Math.abs(col - targetCol);
+        }
+
+        function attacksAsKnight(row, col, targetRow, targetCol) {
+            const dr = Math.abs(row - targetRow);
+            const dc = Math.abs(col - targetCol);
+            return (dr === 2 && dc === 1) || (dr === 1 && dc === 2);
+        }
+
+        function attacksAsKing(row, col, targetRow, targetCol) {
+            return Math.abs(row - targetRow) <= 1 && Math.abs(col - targetCol) <= 1;
+        }
+
+        function attacksAsPawn(row, col, targetRow, targetCol) {
+            // Les pions attaquent en diagonale vers l'avant
+            return (row - 1 === targetRow && Math.abs(col - targetCol) === 1);
+        }
+
+        function evaluateMoveLCV(position, piece, placedPieces) {
+            // Évalue combien de positions futures cette position bloque (Least Constraining Value)
+            let blockedPositions = 0;
+            const tempPlaced = [...placedPieces, { piece, position }];
+            
+            // Pour chaque case restante, vérifier si elle serait encore disponible
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    // Vérifier si cette case est déjà bloquée
+                    let isBlocked = false;
+                    for (const placed of tempPlaced) {
+                        if (placed.position[0] === row && placed.position[1] === col) {
+                            isBlocked = true;
+                            break;
+                        }
+                        if (piecesAttackEachOther(row, col, 'queen', placed.position[0], placed.position[1], placed.piece.type)) {
+                            isBlocked = true;
+                            break;
+                        }
+                    }
+                    if (isBlocked) blockedPositions++;
+                }
+            }
+            
+            return blockedPositions;
+        }
+
+        function forwardCheck(piece, placedPieces) {
+            // Vérifie s'il reste au moins une position valide pour la pièce
+            return getAllValidPositions(piece, placedPieces).length > 0;
+        }
+
+        function forwardChecking(futurePieces, currentPlacement) {
+            // Vérifie si chaque pièce future a au moins une position valide
+            for (const futurePiece of futurePieces) {
+                if (!forwardCheck(futurePiece, currentPlacement)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function displaySolution(solution) {
+            clearBoard();
+            
+            solution.forEach(({ piece, position }) => {
+                const [row, col] = position;
+                board[row][col] = piece;
+            });
+            
+            updateBoardDisplay();
+        }
+
+        function displaySolutionsList() {
+            const container = document.getElementById('solutionsContainer');
+            const display = document.getElementById('solutionsDisplay');
+            
+            container.style.display = 'block';
+            display.innerHTML = '';
+            
+            solutions.slice(0, 10).forEach((solution, index) => {
+                const div = document.createElement('div');
+                div.className = 'solution-item';
+                div.textContent = `Solution ${index + 1} (${solution.length} pièces)`;
+                div.onclick = () => displaySolution(solution);
+                display.appendChild(div);
+            });
+            
+            if (solutions.length > 10) {
+                const div = document.createElement('div');
+                div.textContent = `... et ${solutions.length - 10} solutions supplémentaires`;
+                display.appendChild(div);
+            }
+        }
+
+        function updateBoardDisplay() {
+            const squares = document.querySelectorAll('.square');
+            
+            squares.forEach(square => {
+                const row = parseInt(square.dataset.row);
+                const col = parseInt(square.dataset.col);
+                
+                square.textContent = board[row][col] ? board[row][col].symbol : '';
+                
+                // Réinitialiser l'animation
+                square.classList.remove('placed-piece');
+                if (board[row][col]) {
+                    // Déclencher l'animation
+                    setTimeout(() => square.classList.add('placed-piece'), 10);
+                }
+            });
+            
+            updateStats();
+        }
+
+        function clearBoard() {
+            board = Array(8).fill().map(() => Array(8).fill(null));
+            solutions = [];
+            updateBoardDisplay();
+            document.getElementById('solutionsContainer').style.display = 'none';
+            showStatus('Échiquier effacé.', 'info');
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+
+        function updateStats() {
+            let placedCount = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col]) placedCount++;
+                }
+            }
+            
+            document.getElementById('statPlaced').textContent = placedCount;
+            document.getElementById('statNodes').textContent = nodesExplored.toLocaleString();
+            
+            if (startTime > 0) {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                if (elapsedTime < 60) {
+                    document.getElementById('statTime').textContent = elapsedTime.toFixed(2) + 's';
+                } else {
+                    const minutes = Math.floor(elapsedTime / 60);
+                    const seconds = elapsedTime % 60;
+                    document.getElementById('statTime').textContent = `${minutes}m ${seconds.toFixed(0)}s`;
+                }
+            }
+        }
+
+        function toggleManualMode() {
+            manualMode = !manualMode;
+            showStatus(manualMode ? 
+                'Mode manuel activé. Cliquez sur les cases pour placer des pièces.' : 
+                'Mode solveur activé.', 
+                'info');
+        }
+
+        // Initialiser l'application
+        init();
+    </script>
+</body>
+</html>
